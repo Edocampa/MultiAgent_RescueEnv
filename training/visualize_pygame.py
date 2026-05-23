@@ -222,7 +222,7 @@ def run_demo(checkpoint_path, asset_dir, frame_delay_ms=300, seed=None):
     env = RescueEnvPZ(  size=size,
                         max_cycles=max_cycles,
                         num_fires=ENV["num_fires"],
-                        random_walls=ENV.get("random_walls", False),     
+                        random_walls=ENV.get("random_walls", True),     
                         num_random_walls=ENV.get("num_random_walls", 8),
                         seed=seed)
     renderer = PygameRenderer(env, asset_dir)
@@ -315,7 +315,7 @@ if __name__ == "__main__":
     EXPERIMENT = "exp_5_level10_hier"
 
     CHECKPOINT_PATH = os.path.join(
-        PROJECT_ROOT, "results", f"seed_{SEED}", EXPERIMENT, "policy.pt"
+        PROJECT_ROOT, "results_baseline/results_difficult", f"seed_{SEED}", EXPERIMENT, "policy.pt"
     )
     ASSET_DIR = os.path.join(PROJECT_ROOT, "assets")
 

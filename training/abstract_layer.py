@@ -147,7 +147,7 @@ class HierarchicalAbstraction:
         F_old = float(V_prev[prev_upper[0], prev_upper[1]])
 
         # Canonical PBRS: F = scale * (gamma * V(new) - V(old))
-        return scale * (self.gamma * F_new - F_old)
+        return scale * (F_new - F_old)
 
     def print_V(self, level, has_item=False):
         V = self.V_to_victim[level] if has_item else self.V_to_item[level]

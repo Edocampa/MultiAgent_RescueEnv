@@ -54,7 +54,7 @@ def get_phi(source_level, target_level):
 
 
 # Concrete 10x10 map generation
-def generate_concrete_map(num_fires=5, random_walls=False, num_random_walls=8, rng=None):
+def generate_concrete_map(num_fires=2, random_walls=False, num_random_walls=8, rng=None):
     """
     Universal generator for 10x10 maps.
     

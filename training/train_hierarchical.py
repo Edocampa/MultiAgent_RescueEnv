@@ -370,7 +370,6 @@ def run_full_pipeline(seed, save_dir):
 
     # Experiment 1: Level 10 SPARSE
 
-
     n10 = TRAIN["episodes_per_level"][10]
     res = train_experiment(
         exp_id=1, exp_label="Level 10 - SPARSE (no shaping)",
@@ -418,6 +417,7 @@ def run_full_pipeline(seed, save_dir):
         log_every=TRAIN["log_every"],
     )
     results.append(res)
+    
 
 
     # Experiment 5: Level 10 + shaping V*_5
@@ -497,7 +497,7 @@ def plot_comparison(results, out_dir, seed):
 
 if __name__ == "__main__":
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-    SAVE_DIR = os.path.join(PROJECT_ROOT, "results_1_gamma")
+    SAVE_DIR = os.path.join(PROJECT_ROOT, "results_baseline/resultsdifficult/")
 
     for seed in TRAIN["seeds"]:
         run_full_pipeline(seed=seed, save_dir=SAVE_DIR)
