@@ -23,7 +23,7 @@ from map_generator import (
 )
 
 
-def compute_V_via_VI(goal_cell, blocked_cells, grid_size, gamma=0.8):
+def compute_V_via_VI(goal_cell, blocked_cells, grid_size, gamma=0.85):
     """
     Solves single-agent shortest-path MDP via Value Iteration
 
@@ -83,7 +83,7 @@ class HierarchicalAbstraction:
             concrete_map: dict from generate_concrete_map() (the 10x10 map)
         """
 
-        gamma_shaping = 0.8
+        gamma_shaping = 0.85
 
         for level in [3, 5, 10]:
             level_map = project_map(concrete_map, level)

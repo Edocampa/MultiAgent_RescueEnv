@@ -497,7 +497,7 @@ def plot_comparison(results, out_dir, seed):
 
 if __name__ == "__main__":
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-    SAVE_DIR = os.path.join(PROJECT_ROOT, "results_baseline/resultsdifficult/")
+    SAVE_DIR = os.path.join(PROJECT_ROOT, "results_baseline/results_4/")
 
     for seed in TRAIN["seeds"]:
         run_full_pipeline(seed=seed, save_dir=SAVE_DIR)

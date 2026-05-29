@@ -19,11 +19,11 @@ ENV = {
         5:  100,   # 5x5 mid-length
         10: 200,   # full task
     },
-    #"num_fires": 2,    #in the concrete 10x10; auto-handled at coarse levels (result_1)
-    "num_fires": 3, #(results_difficult)
+    "num_fires": 2,    #in the concrete 10x10; auto-handled at coarse levels (result_1)
+    #"num_fires": 3, #(results_difficult)
 
     # Wall Logic
-    "random_walls": True,    # False = Result 1 (Fissi), True = Difficult (Casuali)
+    "random_walls": False,    # False = Result 1 (Fissi), True = Difficult (Casuali)
     "num_random_walls": 8,    # Numero di muri se random_walls è True
 }
 
@@ -39,7 +39,7 @@ MAPPO_BASE = {
     "clip_eps":   0.2,
     "epochs":     10,
     "batch_size": 64,
-    "entropy_coef": 0.08,
+    "entropy_coef": 0.01,
     "max_grad_norm": 0.5,
     "device": "cuda",
 }
@@ -52,7 +52,7 @@ HIERARCHY = {
     # Without scaling up, the shaping is invisible noise to the optimizer.
     # Empirical sweet spot: ~5.0 makes per-step shaping comparable to wall
     # penalties (-0.3) without dominating pickup/rescue.
-    "shaping_scale": 15.0,           # was 1.0, increased after first iteration
+    "shaping_scale": 10.0,           # was 1.0, increased after first iteration
     # shaping_scale: 15.0 (results_difficult)
 
     # Use canonical PBRS: F = scale * (gamma * V(s') - V(s))
@@ -72,7 +72,7 @@ TRAIN = {
     "seeds": [123],   # one seed for now; add more after verifying convergence
 
     "log_every": 100,
-    "save_dir": "results_baseline/resultsdifficult/",    # result 1 ---> top (entropia 0.08 + gamma 0.8), result 2: entropia 0.05, result 3: entropia 0.01, reslt 4: 0.01 entropia + 0.85 gamma
+    "save_dir": "results_baseline/results_4/",    # result 1 ---> top (entropia 0.08 + gamma 0.8), result 2: entropia 0.05, result 3: entropia 0.01, reslt 4: 0.01 entropia + 0.85 gamma
 }
 
 # Convergence criteria
