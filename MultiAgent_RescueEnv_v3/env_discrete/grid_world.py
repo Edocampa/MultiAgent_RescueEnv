@@ -21,11 +21,13 @@ def get_obs_dim(size, view_size=None):
     if view_size is None:
         view_size = get_view_size_for(size)
     view_size = min(view_size, size)
-    return 10 + view_size * view_size, view_size
+    # 8 positions + 4 one-hot has_item + view_size^2 local view
+    return 12 + view_size * view_size, view_size
 
 
 def get_global_dim(size):
-    return 10 + size * size
+    # 8 positions + 4 one-hot has_item + size^2 obstacle map
+    return 12 + size * size
 
 
 class SimpleGridWorld:
@@ -39,7 +41,7 @@ class SimpleGridWorld:
         self.view_size = view_size if view_size else get_view_size_for(size)
         self.view_size = min(self.view_size, size)
         self.view_radius = self.view_size // 2
-        self.obs_dim = 10 + self.view_size * self.view_size
+        self.obs_dim = 12 + self.view_size * self.view_size
         self.global_dim = get_global_dim(size)
         self.grid = None
         self.wall_cells = []
@@ -147,6 +149,8 @@ class SimpleGridWorld:
 
     def _is_adjacent(self, a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1]) <= 1
+    
+    """
 
     def get_observations(self):
         N = max(1, self.size - 1)
@@ -176,6 +180,59 @@ class SimpleGridWorld:
         obs1[9] = float(self.agent1_has_item)
         obs1[10:10 + view_count] = self._local_view(self.agent2_pos)
         return [obs0, obs1]
+        """
+    
+    # Function for one-hot encoding
+
+    def get_observations(self):
+        N = max(1, self.size - 1)
+        view_count = self.view_size * self.view_size
+        obs0 = np.zeros(self.obs_dim, dtype=np.float32)
+        obs1 = np.zeros(self.obs_dim, dtype=np.float32)
+
+        # Agent 0's observation (egocentric: "mine" first, "other" second)
+        obs0[0] = self.agent1_pos[0] / N
+        obs0[1] = self.agent1_pos[1] / N
+        obs0[2] = self.agent2_pos[0] / N
+        obs0[3] = self.agent2_pos[1] / N
+        obs0[4] = self.item_pos[0] / N
+        obs0[5] = self.item_pos[1] / N
+        obs0[6] = self.victim_pos[0] / N
+        obs0[7] = self.victim_pos[1] / N
+        # My has_item one-hot
+        if self.agent1_has_item:
+            obs0[8], obs0[9] = 1.0, 0.0
+        else:
+            obs0[8], obs0[9] = 0.0, 1.0
+        # Other has_item one-hot
+        if self.agent2_has_item:
+            obs0[10], obs0[11] = 1.0, 0.0
+        else:
+            obs0[10], obs0[11] = 0.0, 1.0
+        obs0[12:12 + view_count] = self._local_view(self.agent1_pos)
+
+        # Agent 1's observation
+        obs1[0] = self.agent2_pos[0] / N
+        obs1[1] = self.agent2_pos[1] / N
+        obs1[2] = self.agent1_pos[0] / N
+        obs1[3] = self.agent1_pos[1] / N
+        obs1[4] = self.item_pos[0] / N
+        obs1[5] = self.item_pos[1] / N
+        obs1[6] = self.victim_pos[0] / N
+        obs1[7] = self.victim_pos[1] / N
+        # My has_item one-hot
+        if self.agent2_has_item:
+            obs1[8], obs1[9] = 1.0, 0.0
+        else:
+            obs1[8], obs1[9] = 0.0, 1.0
+        # Other has_item one-hot
+        if self.agent1_has_item:
+            obs1[10], obs1[11] = 1.0, 0.0
+        else:
+            obs1[10], obs1[11] = 0.0, 1.0
+        obs1[12:12 + view_count] = self._local_view(self.agent2_pos)
+
+        return [obs0, obs1]
 
     def _local_view(self, center):
         view = np.zeros(self.view_size * self.view_size, dtype=np.float32)
@@ -193,6 +250,8 @@ class SimpleGridWorld:
                     view[idx] = 0.5
                 idx += 1
         return view
+    
+    """
 
     def get_global_state(self):
         N = max(1, self.size - 1)
@@ -210,6 +269,40 @@ class SimpleGridWorld:
         for r in range(self.size):
             for c in range(self.size):
                 idx = 10 + r * self.size + c
+                if self.grid[r, c] == WALL:
+                    gs[idx] = 1.0
+                elif self.grid[r, c] == FIRE:
+                    gs[idx] = 0.5
+        return gs
+        """
+    
+     # Function for one-hot encoding
+
+    def get_global_state(self):
+        N = max(1, self.size - 1)
+        gs = np.zeros(self.global_dim, dtype=np.float32)
+        gs[0] = self.agent1_pos[0] / N
+        gs[1] = self.agent1_pos[1] / N
+        gs[2] = self.agent2_pos[0] / N
+        gs[3] = self.agent2_pos[1] / N
+        gs[4] = self.item_pos[0] / N
+        gs[5] = self.item_pos[1] / N
+        gs[6] = self.victim_pos[0] / N
+        gs[7] = self.victim_pos[1] / N
+        # Agent 0 has_item one-hot
+        if self.agent1_has_item:
+            gs[8], gs[9] = 1.0, 0.0
+        else:
+            gs[8], gs[9] = 0.0, 1.0
+        # Agent 1 has_item one-hot
+        if self.agent2_has_item:
+            gs[10], gs[11] = 1.0, 0.0
+        else:
+            gs[10], gs[11] = 0.0, 1.0
+        # Obstacle map (shifted by 2 from before)
+        for r in range(self.size):
+            for c in range(self.size):
+                idx = 12 + r * self.size + c
                 if self.grid[r, c] == WALL:
                     gs[idx] = 1.0
                 elif self.grid[r, c] == FIRE:

@@ -584,7 +584,7 @@ if __name__ == "__main__":
         run_only_exp11(
             seed=42,
             save_dir=SAVE_DIR,
-            max_wall_time_seconds=20 * 3600,
+            max_wall_time_seconds=8 * 3600,
         )
 
     # Pipeline completa (commentato):

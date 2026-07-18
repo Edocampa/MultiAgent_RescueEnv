@@ -65,8 +65,13 @@ class ContinuousWorld:
         self._rng = np.random.RandomState(seed)
 
         # Observation dim: 10 base + view_size^2 local cells
-        self.obs_dim = 10 + view_size * view_size
-        self.global_dim = 10 + size * size
+        #self.obs_dim = 10 + view_size * view_size
+        #self.global_dim = 10 + size * size
+
+        # Observation dim: 8 base + 4 one-hot has_item + view_size^2 local cells
+        # (was 10 base with has_item as 2 scalars; now 8 base + 4 one-hot)
+        self.obs_dim = 12 + view_size * view_size
+        self.global_dim = 12 + size * size
 
         # State (set in reset)
         self.cell_grid = None        # NxN int array (EMPTY/WALL/FIRE)
@@ -191,11 +196,13 @@ class ContinuousWorld:
         """Manhattan distance 1 (including same cell)."""
         return abs(a[0] - b[0]) + abs(a[1] - b[1]) <= 1
 
+
+    """
     def get_observations(self):
-        """Returns observations for both agents.
+        Returns observations for both agents.
 
         Each observation is 10 base features + view_size^2 local cells.
-        """
+        
         N = float(self.size - 1)
         view_count = self.view_size * self.view_size
 
@@ -219,6 +226,59 @@ class ContinuousWorld:
             obs[10:10 + view_count] = self._local_view(self.cell_of(mine))
 
         return [obs0, obs1]
+        """
+    
+    # Function for one-hot encoding
+    
+    def get_observations(self):
+        """Returns observations for both agents.
+
+        Each observation is 12 base features + view_size^2 local cells.
+        Base features (12 dim):
+            [0:2]   my (r, c) normalized
+            [2:4]   other's (r, c) normalized
+            [4:6]   item (r, c) normalized
+            [6:8]   victim (r, c) normalized
+            [8:10]  my has_item one-hot: [1,0]=has, [0,1]=not
+            [10:12] other has_item one-hot: [1,0]=has, [0,1]=not
+        """
+        N = float(self.size - 1)
+        view_count = self.view_size * self.view_size
+
+        obs0 = np.zeros(self.obs_dim, dtype=np.float32)
+        obs1 = np.zeros(self.obs_dim, dtype=np.float32)
+
+        for k, (obs, my_idx) in enumerate([(obs0, 0), (obs1, 1)]):
+            mine = self.agent_pos[my_idx]
+            other = self.agent_pos[1 - my_idx]
+            obs[0] = mine[0] / N
+            obs[1] = mine[1] / N
+            obs[2] = other[0] / N
+            obs[3] = other[1] / N
+            obs[4] = self.item_pos[0] / N
+            obs[5] = self.item_pos[1] / N
+            obs[6] = self.victim_pos[0] / N
+            obs[7] = self.victim_pos[1] / N
+
+            # One-hot encoding for my has_item
+            if self.agent_has_item[my_idx]:
+                obs[8] = 1.0     # has item
+                obs[9] = 0.0
+            else:
+                obs[8] = 0.0
+                obs[9] = 1.0     # does NOT have item
+
+            # One-hot encoding for other's has_item
+            if self.agent_has_item[1 - my_idx]:
+                obs[10] = 1.0    # has item
+                obs[11] = 0.0
+            else:
+                obs[10] = 0.0
+                obs[11] = 1.0    # does NOT have item
+
+            obs[12:12 + view_count] = self._local_view(self.cell_of(mine))
+
+        return [obs0, obs1]
 
     def _local_view(self, center_cell):
         """Returns a view_size x view_size flat array around center_cell."""
@@ -237,9 +297,11 @@ class ContinuousWorld:
                     view[idx] = 0.5
                 idx += 1
         return view
+    
+    """
 
     def get_global_state(self):
-        """Global state for centralized critic: continuous positions + full obstacle map."""
+        Global state for centralized critic: continuous positions + full obstacle map.
         N = float(self.size - 1)
         gs = np.zeros(self.global_dim, dtype=np.float32)
 
@@ -257,6 +319,50 @@ class ContinuousWorld:
         for r in range(self.size):
             for c in range(self.size):
                 idx = 10 + r * self.size + c
+                if self.cell_grid[r, c] == WALL:
+                    gs[idx] = 1.0
+                elif self.cell_grid[r, c] == FIRE:
+                    gs[idx] = 0.5
+
+        return gs
+        """
+    
+    # Function for one-hot encoding
+
+    def get_global_state(self):
+        """Global state for centralized critic: continuous positions + one-hot has_item + full obstacle map."""
+        N = float(self.size - 1)
+        gs = np.zeros(self.global_dim, dtype=np.float32)
+
+        gs[0] = self.agent_pos[0][0] / N
+        gs[1] = self.agent_pos[0][1] / N
+        gs[2] = self.agent_pos[1][0] / N
+        gs[3] = self.agent_pos[1][1] / N
+        gs[4] = self.item_pos[0] / N
+        gs[5] = self.item_pos[1] / N
+        gs[6] = self.victim_pos[0] / N
+        gs[7] = self.victim_pos[1] / N
+
+        # One-hot has_item for agent 0
+        if self.agent_has_item[0]:
+            gs[8] = 1.0
+            gs[9] = 0.0
+        else:
+            gs[8] = 0.0
+            gs[9] = 1.0
+
+        # One-hot has_item for agent 1
+        if self.agent_has_item[1]:
+            gs[10] = 1.0
+            gs[11] = 0.0
+        else:
+            gs[10] = 0.0
+            gs[11] = 1.0
+
+        # Obstacle map shifted by 2 to accommodate the extra 2 dims
+        for r in range(self.size):
+            for c in range(self.size):
+                idx = 12 + r * self.size + c
                 if self.cell_grid[r, c] == WALL:
                     gs[idx] = 1.0
                 elif self.cell_grid[r, c] == FIRE:
