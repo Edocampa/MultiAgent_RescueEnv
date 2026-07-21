@@ -65,13 +65,13 @@ class ContinuousWorld:
         self._rng = np.random.RandomState(seed)
 
         # Observation dim: 10 base + view_size^2 local cells
-        #self.obs_dim = 10 + view_size * view_size
-        #self.global_dim = 10 + size * size
+        self.obs_dim = 10 + view_size * view_size
+        self.global_dim = 10 + size * size
 
         # Observation dim: 8 base + 4 one-hot has_item + view_size^2 local cells
         # (was 10 base with has_item as 2 scalars; now 8 base + 4 one-hot)
-        self.obs_dim = 12 + view_size * view_size
-        self.global_dim = 12 + size * size
+        #self.obs_dim = 12 + view_size * view_size
+        #self.global_dim = 12 + size * size
 
         # State (set in reset)
         self.cell_grid = None        # NxN int array (EMPTY/WALL/FIRE)
@@ -197,11 +197,10 @@ class ContinuousWorld:
         return abs(a[0] - b[0]) + abs(a[1] - b[1]) <= 1
 
 
-    """
     def get_observations(self):
-        Returns observations for both agents.
+        #Returns observations for both agents.
 
-        Each observation is 10 base features + view_size^2 local cells.
+        #Each observation is 10 base features + view_size^2 local cells.
         
         N = float(self.size - 1)
         view_count = self.view_size * self.view_size
@@ -226,12 +225,12 @@ class ContinuousWorld:
             obs[10:10 + view_count] = self._local_view(self.cell_of(mine))
 
         return [obs0, obs1]
-        """
     
+    """
     # Function for one-hot encoding
     
     def get_observations(self):
-        """Returns observations for both agents.
+        Returns observations for both agents.
 
         Each observation is 12 base features + view_size^2 local cells.
         Base features (12 dim):
@@ -241,7 +240,7 @@ class ContinuousWorld:
             [6:8]   victim (r, c) normalized
             [8:10]  my has_item one-hot: [1,0]=has, [0,1]=not
             [10:12] other has_item one-hot: [1,0]=has, [0,1]=not
-        """
+        
         N = float(self.size - 1)
         view_count = self.view_size * self.view_size
 
@@ -279,6 +278,7 @@ class ContinuousWorld:
             obs[12:12 + view_count] = self._local_view(self.cell_of(mine))
 
         return [obs0, obs1]
+        """
 
     def _local_view(self, center_cell):
         """Returns a view_size x view_size flat array around center_cell."""
@@ -298,10 +298,9 @@ class ContinuousWorld:
                 idx += 1
         return view
     
-    """
 
     def get_global_state(self):
-        Global state for centralized critic: continuous positions + full obstacle map.
+        #Global state for centralized critic: continuous positions + full obstacle map.
         N = float(self.size - 1)
         gs = np.zeros(self.global_dim, dtype=np.float32)
 
@@ -325,12 +324,13 @@ class ContinuousWorld:
                     gs[idx] = 0.5
 
         return gs
-        """
+        
     
+    """
     # Function for one-hot encoding
 
     def get_global_state(self):
-        """Global state for centralized critic: continuous positions + one-hot has_item + full obstacle map."""
+        Global state for centralized critic: continuous positions + one-hot has_item + full obstacle map.
         N = float(self.size - 1)
         gs = np.zeros(self.global_dim, dtype=np.float32)
 
@@ -369,6 +369,7 @@ class ContinuousWorld:
                     gs[idx] = 0.5
 
         return gs
+        """
 
     # ── Helper for the option dispatcher (sub-project 3) ──────────────
 

@@ -16,7 +16,7 @@ EMPTY, WALL, FIRE, ITEM, VICTIM = 0, 1, 2, 3, 4
 def get_view_size_for(grid_size, max_view=11):
     return min(max_view, grid_size)
 
-
+"""
 def get_obs_dim(size, view_size=None):
     if view_size is None:
         view_size = get_view_size_for(size)
@@ -27,7 +27,19 @@ def get_obs_dim(size, view_size=None):
 
 def get_global_dim(size):
     # 8 positions + 4 one-hot has_item + size^2 obstacle map
-    return 12 + size * size
+    return 12 + size * size"""
+
+# Functions without one-hot encoding
+
+def get_obs_dim(size, view_size=None):
+    if view_size is None:
+        view_size = get_view_size_for(size)
+    view_size = min(view_size, size)
+    return 10 + view_size * view_size, view_size
+
+
+def get_global_dim(size):
+    return 10 + size * size
 
 
 class SimpleGridWorld:
@@ -41,7 +53,7 @@ class SimpleGridWorld:
         self.view_size = view_size if view_size else get_view_size_for(size)
         self.view_size = min(self.view_size, size)
         self.view_radius = self.view_size // 2
-        self.obs_dim = 12 + self.view_size * self.view_size
+        self.obs_dim = 10 + self.view_size * self.view_size
         self.global_dim = get_global_dim(size)
         self.grid = None
         self.wall_cells = []
@@ -150,8 +162,7 @@ class SimpleGridWorld:
     def _is_adjacent(self, a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1]) <= 1
     
-    """
-
+    
     def get_observations(self):
         N = max(1, self.size - 1)
         view_count = self.view_size * self.view_size
@@ -180,8 +191,8 @@ class SimpleGridWorld:
         obs1[9] = float(self.agent1_has_item)
         obs1[10:10 + view_count] = self._local_view(self.agent2_pos)
         return [obs0, obs1]
-        """
-    
+        
+    """
     # Function for one-hot encoding
 
     def get_observations(self):
@@ -233,6 +244,7 @@ class SimpleGridWorld:
         obs1[12:12 + view_count] = self._local_view(self.agent2_pos)
 
         return [obs0, obs1]
+        """
 
     def _local_view(self, center):
         view = np.zeros(self.view_size * self.view_size, dtype=np.float32)
@@ -251,7 +263,6 @@ class SimpleGridWorld:
                 idx += 1
         return view
     
-    """
 
     def get_global_state(self):
         N = max(1, self.size - 1)
@@ -274,7 +285,8 @@ class SimpleGridWorld:
                 elif self.grid[r, c] == FIRE:
                     gs[idx] = 0.5
         return gs
-        """
+
+    """
     
      # Function for one-hot encoding
 
@@ -307,4 +319,4 @@ class SimpleGridWorld:
                     gs[idx] = 1.0
                 elif self.grid[r, c] == FIRE:
                     gs[idx] = 0.5
-        return gs
+        return gs"""
