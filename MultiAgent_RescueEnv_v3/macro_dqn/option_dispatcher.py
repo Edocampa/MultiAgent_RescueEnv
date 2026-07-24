@@ -156,15 +156,15 @@ class OptionDispatcher:
 
         return self.env.get_observations(), accumulated_rewards, done, info
     
-
+    """
     def get_global_state_compact(self):
         
-        """Returns a compact global state for the centralized critic.
+        Returns a compact global state for the centralized critic.
         Avoids the full 10010-dim obstacle map. Instead:
             10 base features (positions, has_item flags)
             121 local view around agent 0 (11x11)
             121 local view around agent 1 (11x11)
-        Total: 252 dims."""
+        Total: 252 dims.
         
         N = float(self.env.size - 1)
         gs = np.zeros(252, dtype=np.float32)
@@ -181,19 +181,19 @@ class OptionDispatcher:
         gs[10:131] = self.env._local_view(self.env.cell_of(self.env.agent_pos[0]))
         gs[131:252] = self.env._local_view(self.env.cell_of(self.env.agent_pos[1]))
         return gs
-
-    """
+        """
+    
     # Function for one-hot encoding
     
     def get_global_state_compact(self):
         
-        Returns a compact global state for the centralized critic.
+        """Returns a compact global state for the centralized critic.
         Avoids the full obstacle map. Instead:
             8 base features (positions)
             4 one-hot has_item (2 per agent)
             121 local view around agent 0 (11x11)
             121 local view around agent 1 (11x11)
-        Total: 254 dims.
+        Total: 254 dims."""
         
         N = float(self.env.size - 1)
         gs = np.zeros(254, dtype=np.float32)
@@ -224,7 +224,7 @@ class OptionDispatcher:
 
         gs[12:133] = self.env._local_view(self.env.cell_of(self.env.agent_pos[0]))
         gs[133:254] = self.env._local_view(self.env.cell_of(self.env.agent_pos[1]))
-        return gs"""
+        return gs
 
     @property
     def obs_dim(self):
@@ -232,6 +232,6 @@ class OptionDispatcher:
 
     @property
     def global_dim(self):
-        return 252 # it was 254 with one-hot encoding 
+        return 254 # it was 252 without one-hot encoding 
         
     

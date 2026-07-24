@@ -286,7 +286,7 @@ def plot_experiment(rew, rew_b, sr_log, log_every, save_dir):
 if __name__ == "__main__":
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
     SAVE_DIR = os.path.join(PROJECT_ROOT, TRAIN["save_dir"])
-    out_dir = os.path.join(SAVE_DIR, "seed_42", "exp_11_L100_hier_dqn")
+    out_dir = os.path.join(SAVE_DIR, "seed_42", "exp_11_L100_hier_dqn_3run")
 
     MAX_HOURS = 20   # ADJUST as needed
 
