@@ -96,6 +96,7 @@ def train_exp11_dqn(seed, save_dir, max_wall_time_seconds=None):
     sr_window = []
     sr_log = []
     total_successes = 0
+    best_sr = 0.0 
 
     wall_start = time.time()
 
@@ -230,6 +231,11 @@ def train_exp11_dqn(seed, save_dir, max_wall_time_seconds=None):
                   f"SR_cum: {sr_cum:5.1%} | SR_last100: {sr_last100:5.1%} | "
                   f"eps: {agent.epsilon():.3f} | buf: {len(agent.buffer)} | "
                   f"out: {outcome}")
+            # Salvataggio del best model quando SR_last100 supera il record
+            if sr_last100 > best_sr and len(sr_window) >= 100:
+                best_sr = sr_last100
+                agent.save(os.path.join(save_dir, "best_policy.pt"))
+                print(f"    [NEW BEST SR: {best_sr:.1%}, best_policy.pt saved]")
 
     # Save results
     np.save(os.path.join(save_dir, "sr.npy"), np.array(sr_log))
@@ -286,9 +292,9 @@ def plot_experiment(rew, rew_b, sr_log, log_every, save_dir):
 if __name__ == "__main__":
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
     SAVE_DIR = os.path.join(PROJECT_ROOT, TRAIN["save_dir"])
-    out_dir = os.path.join(SAVE_DIR, "seed_42", "exp_11_L100_hier_dqn_3run")
+    out_dir = os.path.join(SAVE_DIR, "seed_42", "exp_11_L100_hier_dqn_4run")
 
-    MAX_HOURS = 20   # ADJUST as needed
+    MAX_HOURS = 20   
 
     train_exp11_dqn(
         seed=42,
