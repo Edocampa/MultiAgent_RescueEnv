@@ -65,7 +65,7 @@ MAPPO_BASE = {
     "batch_size": 64,
     "entropy_coef": 0.08,     # high entropy, same as v2 final iteration
     "max_grad_norm": 0.5,
-    "device": "cuda",         # GPU enabled (change to "cpu" if no GPU)
+    "device": "cpu",         # GPU enabled (change to "cpu" if no GPU)
 }
 
 
@@ -89,7 +89,7 @@ TRAIN = {
         24:  30000,    # the big one
     },
 
-    "seeds": [42],
+    "seeds": [7],
     "log_every": 100,
     "save_dir": "results_24x24_2run/",
 }

@@ -446,34 +446,34 @@ def plot_comparison(results, out_dir, seed):
     plt.close()
     print(f"  Comparison plot saved -> {os.path.join(out_dir, 'comparison.png')}")
 
-"""
-
-Main per runnare tutti gli experiments
-
-if __name__ == "__main__":
-    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-    SAVE_DIR = os.path.join(PROJECT_ROOT, TRAIN["save_dir"])
-
-    for seed in TRAIN["seeds"]:
-        run_full_pipeline(seed=seed, save_dir=SAVE_DIR)
-
-    print("\nAll seeds complete.")
-"""
-
-def run_experiments_by_ids(seed, exp_ids_to_run, save_dir):
+def run_single_experiment(seed, save_dir, exp_id_to_run,
+                           max_wall_time_seconds=None):
     """
-    Runs only the specified experiment IDs. Loads completed ones from disk.
-    Generates comparison plot only when all 7 experiments are available.
+    Runs a single experiment by ID (1-7), skipping all others.
+
+    Exp mapping for pyramid [3, 6, 12, 24]:
+        1 -> L24 sparse    5 -> L6  hier (V*_3)
+        2 -> L12 sparse    6 -> L12 hier (V*_6)
+        3 -> L6  sparse    7 -> L24 hier (V*_12)
+        4 -> L3  sparse
     """
     out_dir = os.path.join(save_dir, f"seed_{seed}")
+    os.makedirs(out_dir, exist_ok=True)
+
+    print(f"\n{'█' * 72}")
+    print(f"  SINGLE EXPERIMENT MODE — v2 24x24")
+    print(f"  Seed: {seed} | Running Exp {exp_id_to_run} of 7")
+    if max_wall_time_seconds:
+        print(f"  Wall-time budget: {max_wall_time_seconds}s "
+              f"({max_wall_time_seconds/3600:.1f}h)")
+    print(f"{'█' * 72}")
 
     abstraction = HierarchicalAbstraction(
-        levels=LEVELS, gamma_VI=HIERARCHY["gamma_VI"]
-    )
+        levels=LEVELS, gamma_VI=HIERARCHY["gamma_VI"])
     max_episodes = max(TRAIN["episodes_per_level"].values())
     map_pool_full = generate_map_pool(max_episodes, seed)
 
-    # Build full experiment list in the same order as run_full_pipeline
+    # Build the full experiment list in the SAME order as run_full_pipeline
     all_experiments = []
     exp_id = 1
     for level in sorted(LEVELS, reverse=True):
@@ -487,78 +487,64 @@ def run_experiments_by_ids(seed, exp_ids_to_run, save_dir):
         upper = abstraction.get_upper_level(level)
         all_experiments.append({
             "exp_id": exp_id, "level": level, "use_shaping": True,
-            "label": f"L{level} - HIERARCHICAL (shaping from V*_{upper})",
+            "label": f"L{level} - HIERARCHICAL (V*_{upper})",
             "folder": f"exp_{exp_id}_L{level}_hier",
         })
         exp_id += 1
 
-    results = []
+    target = next((e for e in all_experiments
+                   if e["exp_id"] == exp_id_to_run), None)
+    if target is None:
+        print(f"ERROR: No experiment with id {exp_id_to_run}")
+        print(f"Valid IDs: 1-{len(all_experiments)}")
+        return None
 
-    for exp_info in all_experiments:
-        exp_dir = os.path.join(out_dir, exp_info["folder"])
+    n_eps = TRAIN["episodes_per_level"][target["level"]]
+    save_subdir = os.path.join(out_dir, target["folder"])
 
-        if exp_info["exp_id"] in exp_ids_to_run:
-            # Run this experiment fresh
-            n_eps = TRAIN["episodes_per_level"][exp_info["level"]]
-            res = train_experiment(
-                exp_id=exp_info["exp_id"],
-                exp_label=exp_info["label"],
-                level=exp_info["level"],
-                use_shaping=exp_info["use_shaping"],
-                map_rngs=map_pool_full[:n_eps],
-                seed=seed, abstraction=abstraction,
-                save_dir=exp_dir,
-                log_every=TRAIN["log_every"],
-            )
-            results.append(res)
-        else:
-            # Load from already-completed experiment on disk
-            sr_path = os.path.join(exp_dir, "sr.npy")
-            rew_path = os.path.join(exp_dir, "rewards.npy")
-            if not os.path.exists(sr_path):
-                print(f"  WARNING: Exp {exp_info['exp_id']} not found at {sr_path}")
-                print(f"  Add {exp_info['exp_id']} to exp_ids_to_run to train it.")
-                continue
-            sr_log = list(np.load(sr_path))
-            rewards  = list(np.load(rew_path))
-            sr_last = (float(np.mean(sr_log[-10:])) if len(sr_log) >= 10
-                       else (sr_log[-1] if sr_log else 0))
-            verdict = ("SUCCESS" if sr_last >= CONVERGENCE["success_threshold"]
-                       else "FAILURE" if sr_last <= CONVERGENCE["failure_threshold"]
-                       else "PARTIAL")
-            results.append({
-                "exp_id": exp_info["exp_id"], "label": exp_info["label"],
-                "level": exp_info["level"], "use_shaping": exp_info["use_shaping"],
-                "rewards": rewards, "rewards_biased": [],
-                "sr_log": sr_log,
-                "final_sr": sum(sr_log) / len(sr_log) if sr_log else 0,
-                "final_sr_window": sr_last, "verdict": verdict,
-            })
-            print(f"  Loaded Exp {exp_info['exp_id']}: {exp_info['label']}"
-                  f" -> SR={sr_last:.1%} ({verdict})")
+    print(f"\n  Selected: {target['label']}")
+    print(f"  Episodes: {n_eps}\n")
 
-    # Generate comparison plot only if all experiments are present
-    if len(results) == len(all_experiments):
-        plot_comparison(results, out_dir, seed)
-        print(f"\n  Comparison plot saved.")
-    else:
-        n_missing = len(all_experiments) - len(results)
-        print(f"\n  {n_missing} experiment(s) missing — comparison plot not generated yet.")
-        print(f"  Run the missing experiments and then call this function again.")
+    res = train_experiment(
+        exp_id=target["exp_id"],
+        exp_label=target["label"],
+        level=target["level"],
+        use_shaping=target["use_shaping"],
+        map_rngs=map_pool_full[:n_eps],
+        seed=seed, abstraction=abstraction,
+        save_dir=save_subdir,
+        log_every=TRAIN["log_every"],
+    )
 
-    print(f"\nDone. Results in: {out_dir}")
+    print(f"\n{'█' * 72}")
+    print(f"  Experiment {target['exp_id']} complete for seed {seed}")
+    print(f"  Final SR: {res['final_sr_window']:.1%} ({res['verdict']})")
+    print(f"{'█' * 72}\n")
+    return res
 
 
 if __name__ == "__main__":
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
     SAVE_DIR = os.path.join(PROJECT_ROOT, TRAIN["save_dir"])
 
-    # ── Opzioni disponibili ────────────────────────────────────────────
-    # Pipeline completa (tutti i seed, tutti gli esperimenti):
-    # for seed in TRAIN["seeds"]:
-    #     run_full_pipeline(seed=seed, save_dir=SAVE_DIR)
+    # ═══════════════════════════════════════════════════════════
+    # SCEGLI IL MODO: "single" per un esperimento, "full" per tutti
+    # ═══════════════════════════════════════════════════════════
+    MODE = "full"
 
-    # Solo Exp 6 e 7 (carica 1-5 da disco, riesegue 6 e 7):
-    run_experiments_by_ids(seed=42, exp_ids_to_run=[1], save_dir=SAVE_DIR)
+    if MODE == "single":
+        # Lancia UN SOLO esperimento (utile per completare mancanti)
+        SEED_TO_RUN = 7           # ← cambia: 42, 7, o 123
+        EXP_TO_RUN = 7            # ← cambia: 1-7 (vedi mapping in run_single_experiment)
+        run_single_experiment(
+            seed=SEED_TO_RUN,
+            save_dir=SAVE_DIR,
+            exp_id_to_run=EXP_TO_RUN,
+        )
+
+    elif MODE == "full":
+        # Pipeline completa per tutti i seed
+        for seed in TRAIN["seeds"]:
+            run_full_pipeline(seed=seed, save_dir=SAVE_DIR)
 
     print("\nDone.")
