@@ -97,7 +97,7 @@ class HierarchicalAbstraction:
             if level == source_size:
                 level_map = concrete_map
             else:
-                level_map = project_map(concrete_map, level)
+                level_map = project_map(concrete_map, level, rule="any")
 
             blocked = set(level_map["wall_cells"]) | set(level_map["fire_cells"])
 

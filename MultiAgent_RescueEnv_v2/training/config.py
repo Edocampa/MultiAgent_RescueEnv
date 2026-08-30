@@ -24,7 +24,7 @@ ENV = {
         3:   50,    # tiny grid
         6:   150,
         12:  300,
-        24:  700,   # full task
+        24:  500,   # full task
     },
 
     # View size per level. Capped at the grid size for small grids.
@@ -71,7 +71,7 @@ MAPPO_BASE = {
 
 # ── Hierarchy / shaping configuration ─────────────────────────────────
 HIERARCHY = {
-    "shaping_scale": 20.0,        # large scale to overcome reward signal
+    "shaping_scale": 15.0,        # large scale to overcome reward signal
     "differential_shaping": True,
     "gamma_VI": 0.8,             # discount for V* computation (NOT MAPPO gamma)
                                    # Lower than MAPPO gamma to make V* gradient steeper
@@ -89,9 +89,9 @@ TRAIN = {
         24:  30000,    # the big one
     },
 
-    "seeds": [7],
+    "seeds": [7,123],
     "log_every": 100,
-    "save_dir": "results_24x24_2run/",
+    "save_dir": "results_24x24/",
 }
 
 
