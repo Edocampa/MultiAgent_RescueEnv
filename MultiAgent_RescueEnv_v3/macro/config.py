@@ -84,7 +84,7 @@ TRAIN = {
     },
     "seeds": [42],   # start with one seed; add more later if Phase 1 succeeds
     "log_every": 100,
-    "save_dir": "results_v3_1run_L100_one_hot/",
+    "save_dir": "results/results_v3_5run_L100/",
 }
 
 

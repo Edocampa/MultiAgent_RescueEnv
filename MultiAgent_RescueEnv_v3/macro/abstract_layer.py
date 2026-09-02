@@ -162,6 +162,33 @@ class HierarchicalAbstraction:
         F_old = float(V_prev[prev_upper[0], prev_upper[1]])
         return scale * (F_new - F_old)
 
+    """
+        def compute_shaping(self, pos, training_level, has_item,
+                        differential=True, prev_pos=None,
+                        prev_has_item=None, scale=1.0):
+        Discrete-level shaping (for L3-L50). pos is integer (r, c).
+        upper_level = self.get_upper_level(training_level)
+        if upper_level is None:
+            return 0.0
+        phi = get_phi(training_level, upper_level)
+        upper_pos = phi(*pos)
+        V_upper = (self.V_to_victim[upper_level] if has_item
+                   else self.V_to_item[upper_level])
+        if V_upper is None:
+            return 0.0
+        F_new = float(V_upper[upper_pos[0], upper_pos[1]])
+        if not differential:
+            return scale * F_new
+        if prev_pos is None:
+            return 0.0
+        had_item = prev_has_item if prev_has_item is not None else has_item
+        V_prev = (self.V_to_victim[upper_level] if had_item
+                  else self.V_to_item[upper_level])
+        prev_upper = phi(*prev_pos)
+        F_old = float(V_prev[prev_upper[0], prev_upper[1]])
+        return scale * (F_new - F_old)
+    """
+
     def compute_shaping_continuous(self, pos_continuous, training_level,
                                     has_item, differential=True,
                                     prev_pos_continuous=None,

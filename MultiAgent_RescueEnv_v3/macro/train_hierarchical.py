@@ -565,37 +565,182 @@ def run_only_exp10(seed, save_dir, max_wall_time_seconds=None,
 
     print(f"\nDone. Final SR: {res['final_sr_window']:.1%} ({res['verdict']})")
 
+def run_selected_experiments(seed, save_dir, exp_ids_to_run,
+                              skip_completed=True,
+                              max_wall_time_per_exp=None,
+                              max_wall_time_total=None):
+    """
+    Run only the specified experiments by ID, in order.
+
+    Args:
+        seed: RNG seed
+        save_dir: base directory
+        exp_ids_to_run: iterable of experiment IDs to run (e.g. [10, 11])
+        skip_completed: skip experiments whose folder already has training.png
+        max_wall_time_per_exp: seconds; each experiment will be interrupted
+                               if it exceeds this. Passed to train_experiment
+                               (requires that train_experiment supports it).
+        max_wall_time_total: seconds; the overall loop will stop if this is
+                             exceeded, even if experiments remain.
+
+    Experiment ID mapping for pyramid [3, 6, 12, 25, 50, 100]:
+      1: L100 sparse    5: L6  sparse    9: L25  hier (V*_12)
+      2: L50  sparse    6: L3  sparse   10: L50  hier (V*_25)
+      3: L25  sparse    7: L6  hier (V*_3)   11: L100 hier (V*_50)
+      4: L12  sparse    8: L12 hier (V*_6)
+    """
+    out_dir = os.path.join(save_dir, f"seed_{seed}")
+    os.makedirs(out_dir, exist_ok=True)
+
+    print(f"\n{'█' * 72}")
+    print(f"  SELECTED EXPERIMENTS MODE")
+    print(f"  Seed: {seed}")
+    print(f"  Experiments requested: {sorted(exp_ids_to_run)}")
+    if max_wall_time_per_exp:
+        print(f"  Per-exp wall-time budget: {max_wall_time_per_exp}s "
+              f"({max_wall_time_per_exp/3600:.1f}h)")
+    if max_wall_time_total:
+        print(f"  Total wall-time budget:   {max_wall_time_total}s "
+              f"({max_wall_time_total/3600:.1f}h)")
+    print(f"{'█' * 72}\n")
+
+    exp_ids_set = set(exp_ids_to_run)
+
+    # Build the full experiment table (must match run_full_pipeline order)
+    all_exps = []
+    exp_id = 1
+    for level in sorted(LEVELS, reverse=True):
+        all_exps.append({
+            "exp_id": exp_id, "level": level, "use_shaping": False,
+            "label": f"L{level} - SPARSE (no shaping)",
+            "folder": f"exp_{exp_id}_L{level}_sparse",
+        })
+        exp_id += 1
+    for level in sorted(LEVELS)[1:]:
+        abstraction_tmp = HierarchicalAbstraction(
+            levels=LEVELS, gamma_VI=HIERARCHY["gamma_VI"])
+        upper = abstraction_tmp.get_upper_level(level)
+        all_exps.append({
+            "exp_id": exp_id, "level": level, "use_shaping": True,
+            "label": f"L{level} - HIERARCHICAL (V*_{upper})",
+            "folder": f"exp_{exp_id}_L{level}_hier",
+        })
+        exp_id += 1
+
+    invalid = exp_ids_set - {e["exp_id"] for e in all_exps}
+    if invalid:
+        print(f"ERROR: Invalid experiment IDs: {sorted(invalid)}")
+        print(f"Valid IDs: 1-{len(all_exps)}")
+        return
+
+    selected = [e for e in all_exps if e["exp_id"] in exp_ids_set]
+
+    abstraction = HierarchicalAbstraction(
+        levels=LEVELS, gamma_VI=HIERARCHY["gamma_VI"])
+    max_episodes = max(TRAIN["episodes_per_level"].values())
+    map_pool_full = generate_map_pool(max_episodes, seed)
+    log_every = TRAIN["log_every"]
+
+    loop_start = time.time()
+
+    for exp in selected:
+        # Global timer check
+        if max_wall_time_total is not None:
+            elapsed = time.time() - loop_start
+            if elapsed > max_wall_time_total:
+                print(f"\n  *** TOTAL WALL-TIME BUDGET EXHAUSTED "
+                      f"({elapsed:.0f}s / {max_wall_time_total}s) ***")
+                print(f"  Stopping loop. Remaining experiments not executed.")
+                break
+
+        n_eps = TRAIN["episodes_per_level"][exp["level"]]
+        save_subdir = os.path.join(out_dir, exp["folder"])
+
+        if skip_completed and os.path.exists(
+                os.path.join(save_subdir, "training.png")):
+            print(f"\n  [SKIP] Exp {exp['exp_id']} ({exp['label']}) "
+                  f"— already completed")
+            continue
+
+        # Compute remaining time budget for this specific experiment
+        exp_time_budget = max_wall_time_per_exp
+        if max_wall_time_total is not None:
+            remaining_total = max_wall_time_total - (time.time() - loop_start)
+            if exp_time_budget is None:
+                exp_time_budget = remaining_total
+            else:
+                exp_time_budget = min(exp_time_budget, remaining_total)
+
+        print(f"\n{'▓' * 72}")
+        print(f"  Running Exp {exp['exp_id']}: {exp['label']}")
+        print(f"  Episodes: {n_eps} | Output: {exp['folder']}")
+        if exp_time_budget is not None:
+            print(f"  This exp budget: {exp_time_budget:.0f}s "
+                  f"({exp_time_budget/3600:.1f}h)")
+        print(f"{'▓' * 72}")
+
+        train_experiment(
+            exp_id=exp["exp_id"],
+            exp_label=exp["label"],
+            level=exp["level"],
+            use_shaping=exp["use_shaping"],
+            map_rngs=map_pool_full[:n_eps],
+            seed=seed, abstraction=abstraction,
+            save_dir=save_subdir,
+            log_every=log_every,
+            max_wall_time_seconds=exp_time_budget,   # ← nuovo parametro
+        )
+
+    total_elapsed = time.time() - loop_start
+    print(f"\n{'█' * 72}")
+    print(f"  Selected experiments loop complete for seed {seed}")
+    print(f"  Total elapsed: {total_elapsed:.0f}s ({total_elapsed/3600:.2f}h)")
+    print(f"{'█' * 72}\n")
+
 if __name__ == "__main__":
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
     SAVE_DIR = os.path.join(PROJECT_ROOT, TRAIN["save_dir"])
 
-    # Decidi cosa lanciare cambiando la variabile MODE
-    MODE = "exp11_full"   # "exp10_sanity" o "exp11_full"
+    # ═══════════════════════════════════════════════════════════════
+    #  MODE: choose one of:
+    #    "full"     — run all 11 experiments in the pipeline
+    #    "exp11"    — run only Experiment 11 (L100 hier)
+    #    "selected" — run a chosen subset of experiments
+    # ═══════════════════════════════════════════════════════════════
+    MODE = "selected"
 
-    if MODE == "exp10_sanity":
-        # Sanity check: L50 hier per 5000 ep, max 2h
-        run_only_exp10(
-            seed=42,
-            save_dir=SAVE_DIR,
-            max_wall_time_seconds=8 * 3600,
-        )
-    elif MODE == "exp11_full":
-        # Run lungo L100 hier per 10000 ep, max 14h
-        run_only_exp11(
-            seed=42,
-            save_dir=SAVE_DIR,
-            max_wall_time_seconds=8 * 3600,
-        )
+    if MODE == "full":
+        for seed in TRAIN["seeds"]:
+            run_full_pipeline(seed=seed, save_dir=SAVE_DIR)
 
-    # Pipeline completa (commentato):
-    # for seed in TRAIN["seeds"]:
-    #     run_full_pipeline(seed=seed, save_dir=SAVE_DIR)
+    elif MODE == "exp11":
+        for seed in TRAIN["seeds"]:
+            run_only_exp11(
+                seed=seed, save_dir=SAVE_DIR,
+                max_wall_time_seconds=22 * 3600,
+            )
 
-"""
-if __name__ == "__main__":
-    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-    SAVE_DIR = os.path.join(PROJECT_ROOT, TRAIN["save_dir"])
-    for seed in TRAIN["seeds"]:
-        run_full_pipeline(seed=seed, save_dir=SAVE_DIR)
-    print("\nAll seeds complete.")
-"""
+    elif MODE == "selected":
+        # Customize which experiments and which seeds
+        SEEDS_TO_RUN = [42]          # ← change as needed
+        EXPS_TO_RUN  = [10]   # ← all except Exp 11
+        # Some other examples:
+        # EXPS_TO_RUN = [11]                    # only Exp 11
+        # EXPS_TO_RUN = [7, 8, 9, 10, 11]       # only the hierarchical ones
+        # EXPS_TO_RUN = [10, 11]                # only L50 and L100 hier
+        # EXPS_TO_RUN = [1, 2, 3]               # only the top sparse ones
+
+        for seed in SEEDS_TO_RUN:
+            run_selected_experiments(
+                seed=seed,
+                save_dir=SAVE_DIR,
+                exp_ids_to_run=EXPS_TO_RUN,
+                skip_completed=True,  # skip if training.png exists
+                max_wall_time_per_exp=14 * 3600,   # 18h per exp max
+                max_wall_time_total=1000 * 3600,     # 40h totali per seed
+            )
+
+    else:
+        raise ValueError(f"Unknown MODE: {MODE}")
+
+    print("\nAll runs complete.")
