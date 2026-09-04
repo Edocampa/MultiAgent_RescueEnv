@@ -722,7 +722,7 @@ if __name__ == "__main__":
 
     elif MODE == "selected":
         # Customize which experiments and which seeds
-        SEEDS_TO_RUN = [42]          # ← change as needed
+        SEEDS_TO_RUN = [123]          # ← change as needed
         EXPS_TO_RUN  = [10]   # ← all except Exp 11
         # Some other examples:
         # EXPS_TO_RUN = [11]                    # only Exp 11
@@ -736,7 +736,7 @@ if __name__ == "__main__":
                 save_dir=SAVE_DIR,
                 exp_ids_to_run=EXPS_TO_RUN,
                 skip_completed=True,  # skip if training.png exists
-                max_wall_time_per_exp=14 * 3600,   # 18h per exp max
+                max_wall_time_per_exp=8 * 3600,   # 18h per exp max
                 max_wall_time_total=1000 * 3600,     # 40h totali per seed
             )
 
